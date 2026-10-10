@@ -297,27 +297,45 @@ export default function CitizenPortal({ currentUser, initialTab = "report", onRe
               </div>
 
               <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
-                {/* Geotagged Map Visual */}
-                <div className="relative h-36 sm:h-44 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100">
-                  <div className="absolute inset-0 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px] opacity-70" />
-                  
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="h-24 w-24 sm:h-28 sm:w-28 rounded-full bg-blue-500/15 border border-blue-400/40 flex items-center justify-center animate-pulse">
-                      <div className="h-7 w-7 rounded-full bg-[#101C2C] text-white flex items-center justify-center shadow-md">
-                        <MapPin className="h-4 w-4" />
-                      </div>
-                    </div>
-                  </div>
+                {/* Live Interactive OpenStreetMap View (Manipal University / Dahmi Kalan) */}
+<div className="relative h-48 sm:h-56 rounded-2xl overflow-hidden border border-slate-300 shadow-inner bg-slate-200">
+  {/* Embedded Live Map Tile */}
+  <iframe
+    title="Citizen Geotagged Map"
+    width="100%"
+    height="100%"
+    frameBorder="0"
+    scrolling="no"
+    marginHeight={0}
+    marginWidth={0}
+    src={`https://www.openstreetmap.org/export/embed.html?bbox=75.5550%2C26.8350%2C75.5750%2C26.8530&layer=mapnik&marker=26.8439%2C75.5653`}
+    className="w-full h-full filter contrast-[1.05]"
+  />
 
-                  <button
-                    type="button"
-                    onClick={fetchLiveLocation}
-                    className="absolute top-2.5 right-2.5 bg-white p-2 rounded-xl shadow-md border border-slate-200 text-slate-700 hover:bg-slate-50"
-                    title="Auto-Detect GPS"
-                  >
-                    {gpsLoading ? <Loader2 className="h-4 w-4 animate-spin text-teal-700" /> : <MapPin className="h-4 w-4 text-teal-700" />}
-                  </button>
-                </div>
+  {/* Visual Target Radar Overlay */}
+  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+    <div className="h-28 w-28 rounded-full bg-blue-500/15 border-2 border-blue-500/40 flex items-center justify-center animate-pulse">
+      <div className="h-8 w-8 rounded-full bg-[#101C2C] text-white flex items-center justify-center shadow-lg border-2 border-white">
+        <MapPin className="h-4 w-4 text-emerald-400" />
+      </div>
+    </div>
+  </div>
+
+  {/* Re-Detect GPS Floating Button */}
+  <button
+    type="button"
+    onClick={fetchLiveLocation}
+    className="absolute top-2.5 right-2.5 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-slate-200 text-slate-800 hover:bg-slate-50 transition flex items-center gap-1.5 text-[11px] font-bold z-10"
+    title="Re-Detect Current Location"
+  >
+    {gpsLoading ? (
+      <Loader2 className="h-3.5 w-3.5 animate-spin text-teal-700" />
+    ) : (
+      <MapPin className="h-3.5 w-3.5 text-teal-700" />
+    )}
+    <span>Live GPS</span>
+  </button>
+</div>
 
                 {/* Area Input */}
                 <div>
