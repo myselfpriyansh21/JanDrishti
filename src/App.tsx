@@ -15,6 +15,7 @@ import {
   Send,
   Search,
   ListOrdered,
+  Home,
 } from "lucide-react";
 
 type AuthRole = "citizen" | "department_officer" | "admin" | null;
@@ -29,29 +30,33 @@ export default function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authIntent, setAuthIntent] = useState<WorkspaceTab | null>(null);
 
+  // Controlled view: true = Landing Page, false = Workspace view
+  const [showLanding, setShowLanding] = useState<boolean>(true);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
         setCurrentUser(data.session.user);
-        resolveRole(data.session.user.id);
+        resolveRole(data.session.user.id, false);
       }
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setCurrentUser(session.user);
-        resolveRole(session.user.id);
+        resolveRole(session.user.id, true);
       } else {
         setCurrentUser(null);
         setUserRole(null);
+        setShowLanding(true);
       }
     });
 
     return () => authListener.subscription.unsubscribe();
   }, []);
 
-  async function resolveRole(userId: string) {
-    const { data } = await supabase
+  async function resolveRole(userId: string, isFreshLogin: boolean = false) {
+    const { data } = await (supabase as any)
       .from("profiles")
       .select("role, department_id")
       .eq("id", userId)
@@ -63,12 +68,15 @@ export default function App() {
 
     if (authIntent) {
       setCurrentTab(authIntent);
+      setShowLanding(false);
       setAuthIntent(null);
-    } else {
+    } else if (isFreshLogin) {
       if (role === "citizen") setCurrentTab("citizen_report");
       else if (role === "department_officer") setCurrentTab("departments");
       else setCurrentTab("command_center");
+      setShowLanding(false);
     }
+    // Agar fresh reload hua ho toh showLanding true (Landing Page) hi rahega
   }
 
   const triggerProtectedAction = (intendedTab: WorkspaceTab) => {
@@ -77,6 +85,7 @@ export default function App() {
       setIsAuthOpen(true);
     } else {
       setCurrentTab(intendedTab);
+      setShowLanding(false);
     }
   };
 
@@ -85,7 +94,15 @@ export default function App() {
     setCurrentUser(null);
     setUserRole(null);
     setAuthIntent(null);
+    setShowLanding(true);
   }
+
+  const navigateToRoleDefault = () => {
+    if (userRole === "citizen") setCurrentTab("citizen_report");
+    else if (userRole === "department_officer") setCurrentTab("departments");
+    else setCurrentTab("command_center");
+    setShowLanding(false);
+  };
 
   const TricolourBackground = () => (
     <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
@@ -100,21 +117,14 @@ export default function App() {
     <div className="relative min-h-screen bg-slate-50/85 text-slate-900 font-sans flex flex-col selection:bg-blue-600 selection:text-white pb-20 md:pb-0">
       <TricolourBackground />
 
-      {/* Responsive Header */}
+      {/* Header */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-2xl border-b border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)]">
         <div className="h-1 sm:h-1.5 w-full bg-gradient-to-r from-[#FF9933] via-white to-[#138808]" />
 
         <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
+          {/* Logo click always takes to Landing Page */}
           <div 
-            onClick={() => {
-              if (currentUser) {
-                if (userRole === "citizen") setCurrentTab("citizen_report");
-                else if (userRole === "department_officer") setCurrentTab("departments");
-                else setCurrentTab("command_center");
-              } else {
-                setAuthIntent(null);
-              }
-            }} 
+            onClick={() => setShowLanding(true)} 
             className="flex items-center gap-2.5 sm:gap-4 cursor-pointer select-none group py-1"
           >
             <img 
@@ -154,6 +164,23 @@ export default function App() {
               </button>
             ) : (
               <>
+                {showLanding ? (
+                  <button
+                    onClick={navigateToRoleDefault}
+                    className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] sm:text-xs font-bold shadow-sm transition flex items-center gap-1.5"
+                  >
+                    <span>Open Workspace</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowLanding(true)}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 bg-white/80 text-[11px] font-bold transition flex items-center gap-1"
+                  >
+                    <Home className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Landing</span>
+                  </button>
+                )}
+
                 <div className="flex items-center gap-2 bg-white/95 border border-slate-200/90 px-2.5 sm:px-3.5 py-1.5 rounded-xl shadow-xs">
                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                   <span className="text-[11px] sm:text-xs text-slate-800 font-semibold truncate max-w-[100px] sm:max-w-[180px]">
@@ -163,6 +190,7 @@ export default function App() {
                     {userRole?.replace("_", " ")}
                   </span>
                 </div>
+
                 <button
                   onClick={handleLogout}
                   className="p-2 sm:p-2.5 text-slate-500 hover:text-red-600 rounded-xl hover:bg-red-50/80 border border-slate-200 transition shadow-xs"
@@ -178,8 +206,7 @@ export default function App() {
 
       {/* Main Workspace Layout */}
       <div className="relative z-10 mx-auto flex max-w-7xl w-full flex-1 p-3 sm:p-6 gap-6">
-        {/* Desktop Sidebar (Hidden on mobile) */}
-        {currentUser && (
+        {currentUser && !showLanding && (
           <aside className="hidden md:block w-60 shrink-0 bg-white/80 backdrop-blur-2xl border border-white/80 shadow-[0_4px_25px_-5px_rgba(0,0,0,0.05)] rounded-2xl p-3.5 h-fit space-y-1.5">
             <p className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
               Operations Menu
@@ -267,9 +294,8 @@ export default function App() {
           </aside>
         )}
 
-        {/* Content Container */}
         <main className="flex-1 min-w-0 w-full">
-          {!currentUser ? (
+          {showLanding ? (
             <LandingPage
               onStartCitizen={() => triggerProtectedAction("citizen_report")}
               onStartAdmin={() => triggerProtectedAction("command_center")}
@@ -300,8 +326,8 @@ export default function App() {
         </main>
       </div>
 
-      {/* MOBILE BOTTOM NAVIGATION BAR (Matches Swachhata Mobile App) */}
-      {currentUser && (
+      {/* Mobile Bottom Navigation */}
+      {currentUser && !showLanding && (
         <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-2xl border-t border-slate-200 px-3 py-2 flex justify-around items-center shadow-lg">
           {userRole === "citizen" ? (
             <>
